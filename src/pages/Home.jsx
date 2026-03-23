@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const CLUB_GUID = "BVBL1197";
+const MATCHES_API_BASE = "https://vblcb.wisseq.eu";
 
 function parseApiDate(value) {
   if (!value) return null;
@@ -66,7 +67,7 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`http://vblcb.wisseq.eu/VBLCB_WebService/data/OrgMatchesByGuid?issguid=${CLUB_GUID}`, { signal: controller.signal })
+    fetch(`${MATCHES_API_BASE}/VBLCB_WebService/data/OrgMatchesByGuid?issguid=${CLUB_GUID}`, { signal: controller.signal })
       .then(r => r.json())
       .then(data => {
         const { start, end } = thisWeekend();

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 const CLUB_GUID = "BVBL1197";
+const MATCHES_API_BASE = "https://vblcb.wisseq.eu";
 
 function startOfWeek(date) {
   const normalized = new Date(date);
@@ -57,7 +58,7 @@ export default function Agenda() {
         setError("");
 
         const response = await fetch(
-          `http://vblcb.wisseq.eu/VBLCB_WebService/data/OrgMatchesByGuid?issguid=${CLUB_GUID}`,
+          `${MATCHES_API_BASE}/VBLCB_WebService/data/OrgMatchesByGuid?issguid=${CLUB_GUID}`,
           { signal: controller.signal }
         );
 

@@ -33,8 +33,8 @@ Phase 1: Prepare the project
 - Confirm the output directory is dist
 
 3. Add environment variables to Vercel
-- VITE_SUPABASE_URL
-- VITE_SUPABASE_ANON_KEY
+- VITE_SUPABASE_URL done
+- VITE_SUPABASE_ANON_KEY done
 
 4. Add the Supabase client to the app
 - Install @supabase/supabase-js

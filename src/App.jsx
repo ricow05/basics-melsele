@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
+import { loadActivities, toActivitiesWithSlug } from "./lib/activities";
 
 import Home from "./pages/Home";
 import Club from "./pages/Club";
@@ -14,6 +15,7 @@ import Partners from "./pages/Partners";
 import Extra from "./pages/Extra";
 import Contact from "./pages/Contact";
 import Webshop from "./pages/Webshop";
+import AdminActivities from "./pages/admin/AdminActivities";
 
 const navItems = [
   { label: "HOME",                          path: "/" },
@@ -29,30 +31,6 @@ const navItems = [
   { label: "WEBSHOP",                       path: "/webshop" },
 ];
 
-function parseCsv(text) {
-  const [headerLine, ...rows] = text.trim().split("\n");
-  const headers = headerLine.split(",").map((h) => h.trim());
-  return rows
-    .map((row) => {
-      const cols = row.split(",");
-      const obj = {};
-      headers.forEach((h, i) => {
-        obj[h] = (cols[i] ?? "").trim();
-      });
-      return obj;
-    })
-    .filter((row) => row.title);
-}
-
-function slugify(value) {
-  return (value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeActivities, setActiveActivities] = useState([]);
@@ -60,25 +38,13 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    fetch("/activities.csv")
-      .then((r) => r.text())
-      .then((text) => {
-        if (!isMounted) return;
-        const items = parseCsv(text)
-          .filter((row) => (row.active || "").toUpperCase() === "Y")
-          .map((row) => ({
-            ...row,
-            slug: slugify(row.title),
-          }))
-          .filter((row) => row.slug);
+    async function loadActiveActivities() {
+      const items = await loadActivities();
+      if (!isMounted) return;
+      setActiveActivities(toActivitiesWithSlug(items));
+    }
 
-        setActiveActivities(items);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setActiveActivities([]);
-        }
-      });
+    loadActiveActivities();
 
     return () => {
       isMounted = false;
@@ -180,6 +146,7 @@ export default function App() {
           <Route path="/extra"             element={<Extra />} />
           <Route path="/contact"           element={<Contact />} />
           <Route path="/webshop"           element={<Webshop />} />
+          <Route path="/admin/activiteiten" element={<AdminActivities />} />
         </Routes>
       </main>
 

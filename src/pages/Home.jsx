@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { getPublishedNewsTickerItems } from "../lib/contentApi";
+import { activityPath, loadActivities } from "../lib/activities";
 
 const CLUB_GUID = "BVBL1197";
 const MATCHES_API_BASE = "https://vblcb.wisseq.eu";
@@ -39,22 +41,6 @@ function parseCsv(text) {
   });
 }
 
-function slugify(value) {
-  return (value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function activityPath(activity) {
-  if (!activity) return "/agenda";
-  if ((activity.active || "").toUpperCase() !== "Y") return "/agenda";
-  const slug = slugify(activity.title);
-  return slug ? `/agenda/activiteit/${slug}` : "/agenda";
-}
-
 export default function Home() {
   const [activities, setActivities] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -90,23 +76,55 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetch("/activities.csv")
-      .then(r => r.text())
-      .then(text => setActivities(parseCsv(text)));
+    let cancelled = false;
+
+    async function loadActivitiesData() {
+      const items = await loadActivities();
+      if (!cancelled) {
+        setActivities(items);
+      }
+    }
+
+    loadActivitiesData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    fetch("/news.csv")
-      .then(r => r.text())
-      .then(text => {
-        const rows = parseCsv(text);
-        const items = rows
-          .filter(row => (row.active || "Y").toUpperCase() === "Y")
-          .map(row => row.message || row.text || row.item || "")
-          .filter(Boolean);
-        setNewsItems(items);
-      })
-      .catch(() => setNewsItems([]));
+    let cancelled = false;
+
+    async function loadNews() {
+      const dbNewsItems = await getPublishedNewsTickerItems();
+      if (cancelled) return;
+
+      if (dbNewsItems.length > 0) {
+        setNewsItems(dbNewsItems);
+        return;
+      }
+
+      fetch("/news.csv")
+        .then(r => r.text())
+        .then(text => {
+          if (cancelled) return;
+          const rows = parseCsv(text);
+          const items = rows
+            .filter(row => (row.active || "Y").toUpperCase() === "Y")
+            .map(row => row.message || row.text || row.item || "")
+            .filter(Boolean);
+          setNewsItems(items);
+        })
+        .catch(() => {
+          if (!cancelled) setNewsItems([]);
+        });
+    }
+
+    loadNews();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const goTo = (index) => setActiveSlide((index + total) % total);

@@ -1,21 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
 import { loadActivities, toActivitiesWithSlug } from "./lib/activities";
+import { useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-import Home from "./pages/Home";
-import Club from "./pages/Club";
-import Seniors from "./pages/Seniors";
-import Jeugd from "./pages/Jeugd";
-import Bewegingsschool from "./pages/Bewegingsschool";
-import Agenda from "./pages/Agenda";
-import Trainingen from "./pages/Trainingen";
-import AgendaActivity from "./pages/AgendaActivity";
-import Tombola from "./pages/Tombola";
-import Partners from "./pages/Partners";
-import Extra from "./pages/Extra";
-import Contact from "./pages/Contact";
-import Webshop from "./pages/Webshop";
+import Home from "./pages/public/Home";
+import Club from "./pages/public/Club";
+import Seniors from "./pages/public/Seniors";
+import Jeugd from "./pages/public/Jeugd";
+import Bewegingsschool from "./pages/public/Bewegingsschool";
+import Agenda from "./pages/public/Agenda";
+import Trainingen from "./pages/public/Trainingen";
+import AgendaActivity from "./pages/public/AgendaActivity";
+import Tombola from "./pages/public/Tombola";
+import Partners from "./pages/public/Partners";
+import Extra from "./pages/public/Extra";
+import Contact from "./pages/public/Contact";
+import Webshop from "./pages/public/Webshop";
 import AdminActivities from "./pages/admin/AdminActivities";
+import Login from "./pages/public/Login";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminNews from "./pages/admin/AdminNews";
+import AdminAgenda from "./pages/admin/AdminAgenda";
+import AdminSponsors from "./pages/admin/AdminSponsors";
+import AdminPages from "./pages/admin/AdminPages";
+import AdminMembers from "./pages/admin/AdminMembers";
 
 const navItems = [
   { label: "HOME",                          path: "/" },
@@ -34,6 +43,7 @@ const navItems = [
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeActivities, setActiveActivities] = useState([]);
+  const { isAuthenticated, signOut, loading } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
@@ -75,6 +85,39 @@ export default function App() {
             />
             <span className="header-title">BASICS MELSELE</span>
           </NavLink>
+          <div className="header-auth">
+            {!loading && !isAuthenticated && (
+              <NavLink
+                to="/login"
+                className={({ isActive }) => `header-auth-item${isActive ? " active" : ""}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                LOGIN
+              </NavLink>
+            )}
+
+            {!loading && isAuthenticated && (
+              <>
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) => `header-auth-item${isActive ? " active" : ""}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  ADMIN
+                </NavLink>
+                <button
+                  type="button"
+                  className="header-auth-item"
+                  onClick={async () => {
+                    await signOut();
+                    setMenuOpen(false);
+                  }}
+                >
+                  LOGOUT
+                </button>
+              </>
+            )}
+          </div>
           <button
             className="hamburger"
             onClick={() => setMenuOpen((o) => !o)}
@@ -121,6 +164,7 @@ export default function App() {
               </NavLink>
             )
           ))}
+
         </nav>
       </header>
 
@@ -146,7 +190,64 @@ export default function App() {
           <Route path="/extra"             element={<Extra />} />
           <Route path="/contact"           element={<Contact />} />
           <Route path="/webshop"           element={<Webshop />} />
-          <Route path="/admin/activiteiten" element={<AdminActivities />} />
+          <Route path="/login"             element={<Login />} />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/news"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminNews />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/agenda"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminAgenda />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/activities"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminActivities />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/sponsors"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminSponsors />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/members"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminMembers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/pages"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminPages />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
 

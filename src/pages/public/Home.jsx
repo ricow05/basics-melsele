@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getPublishedNewsTickerItems } from "../lib/contentApi";
-import { activityPath, loadActivities } from "../lib/activities";
+import { getPublishedNewsTickerItems } from "../../lib/contentApi";
+import { activityPath, loadActivities } from "../../lib/activities";
 
 const CLUB_GUID = "BVBL1197";
 const MATCHES_API_BASE = "https://vblcb.wisseq.eu";

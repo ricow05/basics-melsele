@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { createNewsItem } from "../lib/contentApi";
-import { hasSupabaseEnv } from "../lib/supabase";
+import { createNewsItem } from "../../lib/contentApi";
+import { hasSupabaseEnv } from "../../lib/supabase";
 
 export default function Extra() {
   const [title, setTitle] = useState("");

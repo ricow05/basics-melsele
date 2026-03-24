@@ -1,17 +1,22 @@
 import { useState, useEffect } from "react";
 import { getPublishedActivities } from "../../lib/activities";
-import { createActivity, updateActivity, deleteActivity } from "../../lib/activitiesApi";
+import {
+  createActivity,
+  updateActivity,
+  deleteActivity,
+  uploadActivityImage,
+} from "../../lib/activitiesApi";
 import { hasSupabaseEnv } from "../../lib/supabase";
 
 /**
  * Admin page for managing activities.
- * Currently public, but should be protected by authentication in future.
  * Allows creating, editing, and deleting activities stored in Supabase.
  */
 export default function AdminActivities() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [editingId, setEditingId] = useState(null);
 
@@ -89,6 +94,29 @@ export default function AdminActivities() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  }
+
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setFeedback("");
+
+    const result = await uploadActivityImage(file);
+
+    if (result.error) {
+      setFeedback(`Uploadfout: ${result.error.message}`);
+      setUploadingImage(false);
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      image: result.data?.publicUrl || "",
+    }));
+    setFeedback("Afbeelding geupload.");
+    setUploadingImage(false);
   }
 
   /**
@@ -183,7 +211,7 @@ export default function AdminActivities() {
               name="title"
               value={formData.title}
               onChange={handleChange}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               placeholder="bijv. Zomer Training"
               style={{ width: "100%", padding: "8px" }}
             />
@@ -198,7 +226,7 @@ export default function AdminActivities() {
               name="day"
               value={formData.day}
               onChange={handleChange}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               placeholder="bijv. Zaterdag"
               style={{ width: "100%", padding: "8px" }}
             />
@@ -213,7 +241,7 @@ export default function AdminActivities() {
               name="date"
               value={formData.date}
               onChange={handleChange}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               style={{ width: "100%", padding: "8px" }}
             />
           </div>
@@ -227,7 +255,7 @@ export default function AdminActivities() {
               name="enddate"
               value={formData.enddate}
               onChange={handleChange}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               style={{ width: "100%", padding: "8px" }}
             />
           </div>
@@ -240,7 +268,7 @@ export default function AdminActivities() {
               name="detail"
               value={formData.detail}
               onChange={handleChange}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               placeholder="Beschrijving van de activiteit"
               rows="4"
               style={{ width: "100%", padding: "8px" }}
@@ -248,18 +276,33 @@ export default function AdminActivities() {
           </div>
 
           <div style={{ marginBottom: "15px" }}>
-            <label htmlFor="image">Afbeelding URL</label>
+            <label htmlFor="imageUpload">Upload afbeelding</label>
             <br />
             <input
-              id="image"
-              type="text"
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              disabled={saving}
-              placeholder="bijv. https://..."
-              style={{ width: "100%", padding: "8px" }}
+              id="imageUpload"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={saving || uploadingImage}
             />
+            {uploadingImage && <p style={{ marginTop: "6px", color: "#666" }}>Uploaden...</p>}
+            {!uploadingImage && !formData.image && (
+              <p style={{ marginTop: "8px", color: "#666", fontSize: "0.9rem" }}>
+                Kies een afbeelding om automatisch een URL op te slaan.
+              </p>
+            )}
+            {!!formData.image && (
+              <div style={{ marginTop: "10px" }}>
+                <p style={{ marginBottom: "8px", color: "#666", fontSize: "0.9rem" }}>
+                  Afbeelding geselecteerd en gekoppeld.
+                </p>
+                <img
+                  src={formData.image}
+                  alt="Voorbeeld activiteit"
+                  style={{ maxWidth: "220px", width: "100%", borderRadius: "8px", border: "1px solid #ddd" }}
+                />
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: "15px" }}>
@@ -270,7 +313,7 @@ export default function AdminActivities() {
               name="active"
               value={formData.active}
               onChange={handleChange}
-              disabled={saving}
+              disabled={saving || uploadingImage}
               style={{ padding: "8px" }}
             >
               <option value="Y">Ja</option>
@@ -285,17 +328,17 @@ export default function AdminActivities() {
                 name="published"
                 checked={formData.published}
                 onChange={handleChange}
-                disabled={saving}
+                disabled={saving || uploadingImage}
               />
               Gepubliceerd
             </label>
           </div>
 
           <div>
-            <button type="submit" disabled={saving} style={{ marginRight: "10px" }}>
+            <button type="submit" disabled={saving || uploadingImage} style={{ marginRight: "10px" }}>
               {saving ? "Bezig..." : editingId ? "Bijwerken" : "Toevoegen"}
             </button>
-            <button type="button" onClick={resetForm} disabled={saving}>
+            <button type="button" onClick={resetForm} disabled={saving || uploadingImage}>
               Rechtszetten
             </button>
           </div>

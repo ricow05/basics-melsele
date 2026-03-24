@@ -7,6 +7,13 @@
 
 import { hasSupabaseEnv, supabase } from "./supabase";
 
+const configuredImageColumn = import.meta.env.VITE_SUPABASE_ACTIVITIES_IMAGE_COLUMN || "image";
+
+function getImageColumns() {
+  const fallback = configuredImageColumn === "image_url" ? "image" : "image_url";
+  return [configuredImageColumn, fallback];
+}
+
 /**
  * Safely convert any value to trimmed text.
  * Returns empty string for null/undefined values.
@@ -93,22 +100,35 @@ function parseActivitiesCsv(text) {
 export async function getPublishedActivities() {
   if (!hasSupabaseEnv || !supabase) return [];
 
-  const { data, error } = await supabase
-    .from("activities")
-    .select("title, day, date, enddate, detail, image, active, published")
-    .or("published.eq.true,active.eq.Y")
-    .order("date", { ascending: true });
+  let rows = null;
+  let usedImageColumn = configuredImageColumn;
 
-  if (error || !Array.isArray(data)) return [];
+  for (const imageColumn of getImageColumns()) {
+    const { data, error } = await supabase
+      .from("activities")
+      .select(`id, title, day, date, enddate, detail, ${imageColumn}, active, published`)
+      .or("published.eq.true,active.eq.Y")
+      .order("date", { ascending: true });
 
-  return data
+    if (!error && Array.isArray(data)) {
+      rows = data;
+      usedImageColumn = imageColumn;
+      break;
+    }
+  }
+
+  if (!rows) return [];
+
+  return rows
     .map((row) => ({
+      id: row.id,
       title: asText(row.title),
       day: asText(row.day),
       date: asText(row.date),
       enddate: asText(row.enddate),
       detail: asText(row.detail),
-      image: asText(row.image),
+      image: asText(row[usedImageColumn]),
+      published: row.published === true,
       active: row.published === true ? "Y" : asText(row.active || "Y").toUpperCase(),
     }))
     .filter((row) => row.title);

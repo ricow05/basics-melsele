@@ -1,0 +1,82 @@
+I want a page to build the teams of next season, a season starts in august, so
+from august 2025 until august 2026, next season in 2026 2027, from august 2026 
+until august 2027 the next season in 2027 2028. 
+
+The page should be list all teams that are currently initialized for the upcoming season 
+from oldest to youngest. 
+
+Oldest 
+seniors 
+U21 
+U19
+U18
+U16
+U14 
+U12
+U10
+U8 
+basketschool
+youngest
+
+for seniors it should have two buttons: 
+"voeg mannen team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  seniors,
+  team_name: HSE A for the first team, HSE B for second ...,
+  gender M,
+  age_category seniors
+
+
+"voeg vrouwen team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  seniors,
+  team_name: DSE A for the first team, HSE B for second ...,
+  gender V,
+  age_category seniors
+
+for U19, it should have 1 button 
+"voeg meisjes team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  jeugd,
+  team_name: U19 M for the first team, U19 M B for second ...,
+  gender V,
+  age_category U19
+
+for U18, it should have 1 button 
+"voeg jongens team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  jeugd,
+  team_name: U18 A for the first team, U18 B for second ...,
+  gender M,
+  age_category U18
+
+for U14 and U16, it should have two buttons 
+"voeg jongens team toe" / "voeg meisjes team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  jeugd,
+  team_name: U16/14 A / U16/14 M A for the first team, U16/14 B / U16/14 M B for second ...,
+  gender M/V,
+  age_category U16/U14
+
+for U8/U10/U12, it should have 1 button; 
+"voeg team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  jeugd,
+  team_name: U8/10/12 A for the first team, U8/10/12 B for second ...,
+  gender null,
+  age_category U8/U10/U12
+
+for basketschool, it should have 1 button: 
+"voeg team toe"
+which makes a new row in the teams table: 
+  season: e.g. 2026 2027,
+  category:  jeugd,
+  team_name: basketschool (only one can be made),
+  gender null,
+  age_category basketschool

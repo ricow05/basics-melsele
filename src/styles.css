@@ -895,6 +895,14 @@ body {
   background: var(--purple-light);
 }
 
+.agenda-week-btn-active {
+  background: var(--orange);
+}
+
+.agenda-week-btn-active:hover {
+  background: var(--purple-light);
+}
+
 .agenda-week-label {
   font-weight: 700;
   color: var(--purple-dark);
@@ -987,6 +995,30 @@ body {
   margin-bottom: 1rem;
 }
 
+.admin-filter-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.admin-page-links {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.admin-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.admin-link-button:hover {
+  text-decoration: none;
+}
+
 .admin-filter-input {
   flex: 1 1 340px;
   min-width: 260px;
@@ -1015,6 +1047,81 @@ body {
 
 .data-table tbody tr.clickable-row {
   cursor: pointer;
+}
+
+.table-inline-input {
+  width: 100%;
+  min-width: 90px;
+  border: 1px solid rgba(78, 37, 99, 0.35);
+  border-radius: 6px;
+  padding: 0.4rem 0.45rem;
+  font-family: inherit;
+  font-size: 0.86rem;
+  color: var(--purple-dark);
+  background: var(--white);
+}
+
+.table-inline-input:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+.table-row-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.table-row-actions .agenda-week-btn {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.admin-form-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-form-grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--purple-dark);
+}
+
+.team-builder-note {
+  max-width: 70ch;
+}
+
+.team-builder-teams {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.team-builder-team-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  background: rgba(78, 37, 99, 0.08);
+  color: var(--purple-dark);
+  font-weight: 600;
+}
+
+.team-builder-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.team-builder-actions .agenda-week-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.team-builder-muted {
+  color: var(--purple-mid);
 }
 
 .member-modal-backdrop {

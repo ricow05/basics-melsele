@@ -18,6 +18,7 @@ export default function AdminDashboard() {
           <li><NavLink to="/admin/agenda">Agenda beheren</NavLink></li>
           <li><NavLink to="/admin/activities">Activiteiten beheren</NavLink></li>
           <li><NavLink to="/admin/members">Leden beheren</NavLink></li>
+          <li><NavLink to="/admin/teams">Ploegen beheren</NavLink></li>
           <li><NavLink to="/admin/sponsors">Sponsors beheren</NavLink></li>
           <li><NavLink to="/admin/pages">Pagina-inhoud beheren</NavLink></li>
         </ul>

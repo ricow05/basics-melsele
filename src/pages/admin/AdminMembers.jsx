@@ -20,10 +20,12 @@ export default function AdminMembers() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeOnly, setActiveOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [totalCount, setTotalCount] = useState(0);
 
+  // Separate state for the member detail modal and its linked team records.
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberTeams, setMemberTeams] = useState([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
@@ -33,10 +35,11 @@ export default function AdminMembers() {
     let isMounted = true;
 
     async function loadMembers() {
+      // Keep the list fetch tied to the current page and submitted search term.
       setLoading(true);
       setErrorMessage("");
 
-      const result = await getClubMembers({ page, searchTerm });
+      const result = await getClubMembers({ page, searchTerm, activeOnly });
       if (!isMounted) return;
 
       if (result.error) {
@@ -62,7 +65,7 @@ export default function AdminMembers() {
     return () => {
       isMounted = false;
     };
-  }, [page, searchTerm]);
+  }, [page, searchTerm, activeOnly]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(totalCount / CLUB_MEMBERS_PAGE_SIZE));
@@ -74,7 +77,13 @@ export default function AdminMembers() {
     setSearchTerm(searchInput.trim());
   }
 
+  function handleToggleActiveOnly() {
+    setPage(1);
+    setActiveOnly((prev) => !prev);
+  }
+
   async function handleMemberClick(member) {
+    // Open the modal immediately, then load the team membership details for that member.
     setSelectedMember(member);
     setMemberTeams([]);
     setTeamsError("");
@@ -117,6 +126,13 @@ export default function AdminMembers() {
                 className="admin-filter-input"
               />
               <button type="submit" className="agenda-week-btn">Zoeken</button>
+              <button
+                type="button"
+                className={`agenda-week-btn${activeOnly ? " agenda-week-btn-active" : ""}`}
+                onClick={handleToggleActiveOnly}
+              >
+                {activeOnly ? "Alle leden" : "Actieve leden (2025 2026)"}
+              </button>
             </form>
 
             <p className="agenda-state">
@@ -142,6 +158,7 @@ export default function AdminMembers() {
                         <th>Postcode</th>
                         <th>E-mail</th>
                         <th>Aansluiting</th>
+                        <th>Laatst actief</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -151,6 +168,7 @@ export default function AdminMembers() {
                           className="clickable-row"
                           onClick={() => handleMemberClick(member)}
                         >
+                          {/* Clicking a row opens the member detail modal with linked team data. */}
                           <td>
                             <strong>{member.last_name}</strong>, {member.first_name}
                           </td>
@@ -160,6 +178,7 @@ export default function AdminMembers() {
                           <td>{member.postcode || "-"}</td>
                           <td>{member.email_primary || member.email_secondary || "-"}</td>
                           <td>{formatDate(member.joined_at)}</td>
+                          <td>{member.last_active || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -213,6 +232,7 @@ export default function AdminMembers() {
               <p>Geen ploeglidmaatschappen gevonden.</p>
             )}
 
+            {/* Team player rows are enriched with matching team records from the teams table. */}
             {!teamsLoading && !teamsError && memberTeams.length > 0 && (
               <div className="table-wrap">
                 <table className="data-table">

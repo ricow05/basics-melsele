@@ -25,6 +25,7 @@ import AdminAgenda from "./pages/admin/AdminAgenda";
 import AdminSponsors from "./pages/admin/AdminSponsors";
 import AdminPages from "./pages/admin/AdminPages";
 import AdminMembers from "./pages/admin/AdminMembers";
+import AdminTeams from "./pages/admin/team management/AdminTeams";
 
 const navItems = [
   { label: "HOME",                          path: "/" },
@@ -237,6 +238,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "editor"]}>
                 <AdminMembers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/teams"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "editor"]}>
+                <AdminTeams />
               </ProtectedRoute>
             }
           />

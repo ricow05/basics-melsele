@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  addPlayerToTeam,
   createTeam,
   getCurrentSeason,
+  getEligiblePlayersForTeam,
   getTeamPlayers,
   getTeams,
   getTeamSeasons,
@@ -9,6 +11,14 @@ import {
   updateTeam,
 } from "../../../lib/teams";
 import { hasSupabaseEnv } from "../../../lib/supabase";
+import {
+  filterTeamsForRule,
+  getCreatableAgeCategories,
+  getRuleForAgeCategory,
+  normalizeGender,
+} from "../../../lib/teamCreationRules";
+import TeamPlayersModal from "./components/TeamPlayersModal";
+import AddTeamModal from "./components/AddTeamModal";
 
 function formatFee(value) {
   if (value === null || value === undefined || value === "") return "-";
@@ -19,116 +29,102 @@ function formatFee(value) {
   }).format(value);
 }
 
-const TEAM_CREATE_RULES = {
-  seniors: {
-    category: "seniors",
-    genders: ["M", "V"],
-    nameForGender: {
-      M: (count) => `HSE ${toAlphabeticSuffix(count)}`,
-      V: (count) => `DSE ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  U19: {
-    category: "jeugd",
-    genders: ["V"],
-    nameForGender: {
-      V: (count) => (count === 0 ? "U19 M" : `U19 M ${toAlphabeticSuffix(count)}`),
-    },
-  },
-  U18: {
-    category: "jeugd",
-    genders: ["M"],
-    nameForGender: {
-      M: (count) => `U18 ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  U16: {
-    category: "jeugd",
-    genders: ["M", "V"],
-    nameForGender: {
-      M: (count) => `U16 ${toAlphabeticSuffix(count)}`,
-      V: (count) => `U16 M ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  U14: {
-    category: "jeugd",
-    genders: ["M", "V"],
-    nameForGender: {
-      M: (count) => `U14 ${toAlphabeticSuffix(count)}`,
-      V: (count) => `U14 M ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  U12: {
-    category: "jeugd",
-    genders: [""],
-    nameForGender: {
-      "": (count) => `U12 ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  U10: {
-    category: "jeugd",
-    genders: [""],
-    nameForGender: {
-      "": (count) => `U10 ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  U8: {
-    category: "jeugd",
-    genders: [""],
-    nameForGender: {
-      "": (count) => `U8 ${toAlphabeticSuffix(count)}`,
-    },
-  },
-  basketschool: {
-    category: "jeugd",
-    genders: [""],
-    maxTeams: 1,
-    nameForGender: {
-      "": () => "basketschool",
-    },
-  },
+function formatMemberName(member) {
+  const firstName = String(member?.first_name || "").trim();
+  const lastName = String(member?.last_name || "").trim();
+  return [firstName, lastName].filter(Boolean).join(" ");
+}
+
+const TEAM_VIEW_FILTERS = {
+  seniors: "Seniors",
+  highRings: "Hoge ringen",
+  lowRings: "Lage ringen",
+  other: "Andere",
 };
 
-function toAlphabeticSuffix(index) {
-  let value = index;
-  let result = "";
-
-  do {
-    result = String.fromCharCode(65 + (value % 26)) + result;
-    value = Math.floor(value / 26) - 1;
-  } while (value >= 0);
-
-  return result;
+function isHighRingsAge(ageCategory) {
+  return ["U14", "U16", "U18", "U19", "U21"].includes(ageCategory);
 }
 
-function normalizeGender(value) {
-  return value === "" || value == null ? null : value;
+function isLowRingsAge(ageCategory) {
+  return ["U12", "U10", "U8", "basketschool"].includes(ageCategory);
 }
 
-function filterTeamsForRule(teams, ageCategory, gender) {
-  return teams.filter((team) => {
-    if (team.age_category !== ageCategory) return false;
-    if (normalizeGender(gender) === null) return true;
-    return normalizeGender(team.gender) === normalizeGender(gender);
+function matchesTeamViewFilter(team, filter) {
+  const ageCategory = team.age_category || "";
+
+  if (filter === "seniors") {
+    return ageCategory === "seniors";
+  }
+
+  if (filter === "highRings") {
+    return isHighRingsAge(ageCategory);
+  }
+
+  if (filter === "lowRings") {
+    return isLowRingsAge(ageCategory);
+  }
+
+  if (filter === "other") {
+    return ageCategory !== "seniors" && !isHighRingsAge(ageCategory) && !isLowRingsAge(ageCategory);
+  }
+
+  return true;
+}
+
+const AGE_ORDER = ["seniors", "U21", "U19", "U18", "U16", "U14", "U12", "U10", "U8", "basketschool"];
+
+function sortTeamsByAge(teams) {
+  return [...teams].sort((left, right) => {
+    const leftIndex = AGE_ORDER.indexOf(left.age_category || "");
+    const rightIndex = AGE_ORDER.indexOf(right.age_category || "");
+    const safeLeftIndex = leftIndex === -1 ? AGE_ORDER.length : leftIndex;
+    const safeRightIndex = rightIndex === -1 ? AGE_ORDER.length : rightIndex;
+
+    if (safeLeftIndex !== safeRightIndex) {
+      return safeLeftIndex - safeRightIndex;
+    }
+
+    return String(left.team_name || "").localeCompare(String(right.team_name || ""), "nl-BE", {
+      numeric: true,
+    });
   });
 }
 
 export default function AdminTeams() {
+  // Season values used in the table filter and add-team defaults.
   const currentSeason = getCurrentSeason();
   const upcomingSeason = getUpcomingSeason();
+
+  // Main teams list and season filter state.
   const [teams, setTeams] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(currentSeason);
+  const [selectedViewFilter, setSelectedViewFilter] = useState("seniors");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Team players modal state.
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamPlayers, setTeamPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
+  const [eligiblePlayers, setEligiblePlayers] = useState([]);
+  const [recommendedPlayers, setRecommendedPlayers] = useState([]);
+  const [eligiblePlayersLoading, setEligiblePlayersLoading] = useState(false);
+  const [eligiblePlayersError, setEligiblePlayersError] = useState("");
+  const [addingPlayerId, setAddingPlayerId] = useState(null);
+  const [playerFeedbackMessage, setPlayerFeedbackMessage] = useState("");
+
+  // Inline row edit state.
   const [editingTeamId, setEditingTeamId] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [savingTeamId, setSavingTeamId] = useState(null);
+
+  // Page feedback state.
   const [feedbackMessage, setFeedbackMessage] = useState("");
+
+  // Add-team modal state.
   const [showAddModal, setShowAddModal] = useState(false);
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [addForm, setAddForm] = useState({
@@ -137,12 +133,21 @@ export default function AdminTeams() {
     gender: "M",
   });
 
-  const creatableAgeCategories = useMemo(() => Object.keys(TEAM_CREATE_RULES), []);
+  const creatableAgeCategories = useMemo(() => getCreatableAgeCategories(), []);
+  const addGenderOptions = useMemo(() => {
+    const rule = getRuleForAgeCategory(addForm.ageCategory);
+    return rule?.genders || [""];
+  }, [addForm.ageCategory]);
 
   const seasonOptions = useMemo(() => {
     const unique = [...new Set([...seasons, currentSeason, upcomingSeason])].filter(Boolean);
     return unique.sort((left, right) => right.localeCompare(left, "nl-BE", { numeric: true }));
   }, [seasons, currentSeason, upcomingSeason]);
+
+  const filteredTeams = useMemo(() => {
+    const visibleTeams = teams.filter((team) => matchesTeamViewFilter(team, selectedViewFilter));
+    return sortTeamsByAge(visibleTeams);
+  }, [teams, selectedViewFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -213,7 +218,7 @@ export default function AdminTeams() {
   useEffect(() => {
     setAddForm((current) => {
       const nextSeason = current.season || upcomingSeason;
-      const rule = TEAM_CREATE_RULES[current.ageCategory] || TEAM_CREATE_RULES.seniors;
+      const rule = getRuleForAgeCategory(current.ageCategory) || getRuleForAgeCategory("seniors");
       const safeGender = rule.genders.includes(current.gender) ? current.gender : rule.genders[0];
 
       return {
@@ -229,29 +234,81 @@ export default function AdminTeams() {
 
     setSelectedTeam(team);
     setTeamPlayers([]);
+    setEligiblePlayers([]);
+    setRecommendedPlayers([]);
     setPlayersError("");
+    setEligiblePlayersError("");
+    setPlayerFeedbackMessage("");
     setPlayersLoading(true);
+    setEligiblePlayersLoading(true);
 
-    const result = await getTeamPlayers(team.source_team_id);
+    const [playersResult, eligibleResult] = await Promise.all([
+      getTeamPlayers(team.source_team_id),
+      getEligiblePlayersForTeam(team),
+    ]);
+
     setPlayersLoading(false);
+    setEligiblePlayersLoading(false);
 
-    if (result.error) {
-      setPlayersError(result.error.message || "Kon spelers niet laden.");
-      return;
+    if (playersResult.error) {
+      setPlayersError(playersResult.error.message || "Kon spelers niet laden.");
+    } else {
+      setTeamPlayers(playersResult.data);
     }
 
-    setTeamPlayers(result.data);
+    if (eligibleResult.error) {
+      setEligiblePlayersError(eligibleResult.error.message || "Kon beschikbare spelers niet laden.");
+    } else {
+      setEligiblePlayers(eligibleResult.data.eligiblePlayers || []);
+      setRecommendedPlayers(eligibleResult.data.recommendedPlayers || []);
+    }
   }
 
   function handleCloseTeamModal() {
     setSelectedTeam(null);
     setTeamPlayers([]);
+    setEligiblePlayers([]);
+    setRecommendedPlayers([]);
     setPlayersError("");
+    setEligiblePlayersError("");
+    setAddingPlayerId(null);
+    setPlayerFeedbackMessage("");
+  }
+
+  async function handleAddPlayer(member) {
+    if (!selectedTeam) return;
+
+    setAddingPlayerId(member.source_member_id);
+    setEligiblePlayersError("");
+    setPlayerFeedbackMessage("");
+
+    const result = await addPlayerToTeam(selectedTeam, member);
+    setAddingPlayerId(null);
+
+    if (result.error) {
+      setEligiblePlayersError(result.error.message || "Kon speler niet toevoegen.");
+      return;
+    }
+
+    const displayName = formatMemberName(member) || member.member_name || `Lid ${member.source_member_id}`;
+    setEligiblePlayers((current) => current.filter((entry) => entry.source_member_id !== member.source_member_id));
+    setRecommendedPlayers((current) => current.filter((entry) => entry.source_member_id !== member.source_member_id));
+    setPlayerFeedbackMessage(`${displayName} toegevoegd aan ${selectedTeam.team_name || "de ploeg"}.`);
+
+    const refreshedPlayers = await getTeamPlayers(selectedTeam.source_team_id);
+    if (refreshedPlayers.error) {
+      setPlayersError(refreshedPlayers.error.message || "Kon spelers niet vernieuwen.");
+      setTeamPlayers((current) => [...current, result.data]);
+      return;
+    }
+
+    setPlayersError("");
+    setTeamPlayers(refreshedPlayers.data);
   }
 
   function handleOpenAddModal() {
     const initialAgeCategory = "seniors";
-    const initialRule = TEAM_CREATE_RULES[initialAgeCategory];
+    const initialRule = getRuleForAgeCategory(initialAgeCategory);
     setAddForm({
       season: upcomingSeason,
       ageCategory: initialAgeCategory,
@@ -269,7 +326,7 @@ export default function AdminTeams() {
 
   function handleAddFormChange(field, value) {
     if (field === "ageCategory") {
-      const rule = TEAM_CREATE_RULES[value];
+      const rule = getRuleForAgeCategory(value);
       setAddForm((current) => ({
         ...current,
         ageCategory: value,
@@ -287,7 +344,7 @@ export default function AdminTeams() {
   async function handleCreateTeam(e) {
     e.preventDefault();
 
-    const rule = TEAM_CREATE_RULES[addForm.ageCategory];
+    const rule = getRuleForAgeCategory(addForm.ageCategory);
     if (!rule) {
       setErrorMessage("Onbekende leeftijdscategorie.");
       return;
@@ -447,6 +504,19 @@ export default function AdminTeams() {
                 </select>
               </label>
 
+              <label>
+                Weergave
+                <select
+                  value={selectedViewFilter}
+                  onChange={(e) => setSelectedViewFilter(e.target.value)}
+                  className="admin-filter-input"
+                >
+                  {Object.entries(TEAM_VIEW_FILTERS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+
               <div className="admin-filter-actions">
                 <button type="button" className="agenda-week-btn" onClick={handleOpenAddModal}>
                   Add team
@@ -457,17 +527,17 @@ export default function AdminTeams() {
             <p className="agenda-state">
               {loading
                 ? "Ploegen laden..."
-                : `${teams.length} ploegen gevonden voor seizoen \"${selectedSeason}\".`}
+                : `${filteredTeams.length} ploegen gevonden voor seizoen \"${selectedSeason}\" (${TEAM_VIEW_FILTERS[selectedViewFilter]}).`}
             </p>
 
             {feedbackMessage && <p className="agenda-state">{feedbackMessage}</p>}
             {errorMessage && <p className="agenda-state agenda-state-error">{errorMessage}</p>}
 
-            {!loading && !errorMessage && teams.length === 0 && (
+            {!loading && !errorMessage && filteredTeams.length === 0 && (
               <p>Geen ploegen gevonden voor deze selectie.</p>
             )}
 
-            {!errorMessage && teams.length > 0 && (
+            {!errorMessage && filteredTeams.length > 0 && (
               <div className="table-wrap">
                 <table className="data-table">
                   <thead>
@@ -482,7 +552,7 @@ export default function AdminTeams() {
                     </tr>
                   </thead>
                   <tbody>
-                    {teams.map((team) => (
+                    {filteredTeams.map((team) => (
                       <tr
                         key={team.source_team_id || `${team.season}-${team.team_name}`}
                         className={editingTeamId === team.source_team_id ? "" : "clickable-row"}
@@ -595,128 +665,32 @@ export default function AdminTeams() {
         )}
       </section>
 
-      {selectedTeam && (
-        <div className="member-modal-backdrop" onClick={handleCloseTeamModal}>
-          <div className="member-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="member-modal-header">
-              <div>
-                <p className="member-modal-title">{selectedTeam.team_name || "Ploeg"}</p>
-                <p className="member-modal-subtitle">
-                  {selectedTeam.season || "-"} · {selectedTeam.age_category || "-"} · {selectedTeam.gender || "-"}
-                </p>
-              </div>
-              <button className="member-modal-close" onClick={handleCloseTeamModal} aria-label="Sluiten">✕</button>
-            </div>
+      <TeamPlayersModal
+        selectedTeam={selectedTeam}
+        teamPlayers={teamPlayers}
+        playersLoading={playersLoading}
+        playersError={playersError}
+        eligiblePlayers={eligiblePlayers}
+        recommendedPlayers={recommendedPlayers}
+        eligiblePlayersLoading={eligiblePlayersLoading}
+        eligiblePlayersError={eligiblePlayersError}
+        addingPlayerId={addingPlayerId}
+        playerFeedbackMessage={playerFeedbackMessage}
+        onAddPlayer={handleAddPlayer}
+        onClose={handleCloseTeamModal}
+      />
 
-            {playersLoading && <p className="agenda-state">Spelers laden...</p>}
-            {playersError && <p className="agenda-state agenda-state-error">{playersError}</p>}
-
-            {!playersLoading && !playersError && teamPlayers.length === 0 && (
-              <p>Geen spelers gevonden voor deze ploeg.</p>
-            )}
-
-            {!playersLoading && !playersError && teamPlayers.length > 0 && (
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Naam</th>
-                      <th>Lid ID</th>
-                      <th>Shirt</th>
-                      <th>Rol 1</th>
-                      <th>Rol 2</th>
-                      <th>Positie 1</th>
-                      <th>Positie 2</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {teamPlayers.map((player) => (
-                      <tr key={player.source_team_player_id || `${player.source_member_id}-${player.member_name}`}>
-                        <td>{player.member_name || "-"}</td>
-                        <td>{player.source_member_id || "-"}</td>
-                        <td>{player.shirt_number ?? "-"}</td>
-                        <td>{player.role_primary || "-"}</td>
-                        <td>{player.role_secondary || player.role_tertiary || "-"}</td>
-                        <td>{player.position_primary || "-"}</td>
-                        <td>{player.position_secondary || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showAddModal && (
-        <div className="member-modal-backdrop" onClick={handleCloseAddModal}>
-          <div className="member-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="member-modal-header">
-              <div>
-                <p className="member-modal-title">Team toevoegen</p>
-                <p className="member-modal-subtitle">Kies seizoen, leeftijdsgroep en geslacht.</p>
-              </div>
-              <button className="member-modal-close" onClick={handleCloseAddModal} aria-label="Sluiten">✕</button>
-            </div>
-
-            <form className="admin-form-grid" onSubmit={handleCreateTeam}>
-              <label>
-                Seizoen
-                <select
-                  className="admin-filter-input"
-                  value={addForm.season}
-                  onChange={(e) => handleAddFormChange("season", e.target.value)}
-                  disabled={creatingTeam}
-                >
-                  {seasonOptions.map((season) => (
-                    <option key={season} value={season}>{season}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Leeftijdsgroep
-                <select
-                  className="admin-filter-input"
-                  value={addForm.ageCategory}
-                  onChange={(e) => handleAddFormChange("ageCategory", e.target.value)}
-                  disabled={creatingTeam}
-                >
-                  {creatableAgeCategories.map((ageCategory) => (
-                    <option key={ageCategory} value={ageCategory}>{ageCategory}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Geslacht
-                <select
-                  className="admin-filter-input"
-                  value={addForm.gender}
-                  onChange={(e) => handleAddFormChange("gender", e.target.value)}
-                  disabled={creatingTeam}
-                >
-                  {(TEAM_CREATE_RULES[addForm.ageCategory]?.genders || [""]).map((gender) => (
-                    <option key={gender || "none"} value={gender}>
-                      {gender || "Geen / gemengd"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="table-row-actions">
-                <button type="submit" className="agenda-week-btn" disabled={creatingTeam}>
-                  {creatingTeam ? "Bezig..." : "Add team"}
-                </button>
-                <button type="button" className="agenda-week-btn" onClick={handleCloseAddModal} disabled={creatingTeam}>
-                  Annuleer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddTeamModal
+        isOpen={showAddModal}
+        creatingTeam={creatingTeam}
+        addForm={addForm}
+        seasonOptions={seasonOptions}
+        creatableAgeCategories={creatableAgeCategories}
+        genderOptions={addGenderOptions}
+        onClose={handleCloseAddModal}
+        onSubmit={handleCreateTeam}
+        onChange={handleAddFormChange}
+      />
     </div>
   );
 }

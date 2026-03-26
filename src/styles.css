@@ -1183,6 +1183,54 @@ body {
   color: var(--orange);
 }
 
+.member-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.member-modal-section {
+  margin-top: 1.25rem;
+}
+
+.member-modal-section:first-of-type {
+  margin-top: 0;
+}
+
+.member-modal-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.member-modal-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--purple-dark);
+}
+
+.member-modal-section-subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.84rem;
+  color: var(--purple-mid);
+}
+
+.member-modal-filter-row {
+  margin-bottom: 0.85rem;
+}
+
+.member-modal-action-cell {
+  white-space: nowrap;
+}
+
+.member-modal-action-cell .agenda-week-btn {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+}
+
 /* ===== CONTACT ===== */
 .contact-grid {
   display: grid;

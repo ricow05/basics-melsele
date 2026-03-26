@@ -1,0 +1,25 @@
+
+add a button that adds a player to this team:
+
+it should show all eligible players to join this team: 
+- get them from club_members
+- for a e.g a U10 team, eligible players for the 2026 2027 season are all players 
+of birthdates 2017 or later. so the "second year' minus the U. so a U16 player
+max birthyear for 2027 2028 is 2012. 
+- for seniors it can only be players that are born in the second year of the 
+season minus 15. 
+
+- show the "recommended players" these should be for the U teams, players that 
+have the max birthyear of one younger. Except for the U21 it can be 2 younger.
+For the seniors teams the recommended players should be the players of the same 
+team in the previous year. 
+
+- there should be an option to search the club members to add non recommended players
+
+- when selecting the player to join it should make a row in the team_players 
+table 
+-> source_team_id = the id of the team the player is added to 
+-> source_member_id = the id of the player thats added 
+-> member_name = concatenation of first and last name of the player thats added 
+-> role_primary = speler
+
